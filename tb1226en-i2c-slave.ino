@@ -39,19 +39,16 @@
 #define I2C_PULLUP 0
 #define I2C_FASTMODE 1
 
-// These work for a Mega2560
-/*
-#define SDA_PORT PORTA
-#define SDA_PIN 0 // = 22
-#define SCL_PORT PORTA
-#define SCL_PIN 2 // = 24
-*/
-
 // These work for Nano 3.0
 #define SDA_PORT PORTD
 #define SDA_PIN 4 // = PD4
 #define SCL_PORT PORTD
 #define SCL_PIN 5 // = PD5
+
+const int buttonPin2 = 2;  // the number of the pushbutton pin
+const int buttonPin3 = 3;
+int buttonState1 = 0;  // variable for reading the pushbutton status
+int buttonState2 = 0;
 
 #include <SoftI2CMaster.h>
 #include <Wire.h>
@@ -62,9 +59,9 @@
 // to the right to get the "real" address which is then 44h/68
 #define TB1226EN_ADDR (68)
 
-#define REG_UNICOLOR (0x00)
-#define REG_RGB_CONTRAST (0x06)
-#define REG_MUTE_WIDE_VBLK (0x1B)
+#define REG_MUTE_WIDE_VBLK (0x09)
+
+int Vsize = 0x5B;
 
 void setup() {
   Serial.begin(115200);
@@ -91,19 +88,25 @@ void writeRegister(const uint8_t reg, const uint8_t val) {
 }
 
 void writeRequest(int byteCount) {
+  
+  pinMode(buttonPin2, INPUT);
+  pinMode(buttonPin3, INPUT);
+  buttonState1 = digitalRead(buttonPin2);
+  buttonState2 = digitalRead(buttonPin3);
+  
+  if (buttonState1 == HIGH) {
+    Vsize = Vsize + 0x01;
+  }
+  if (buttonState2 == HIGH) {
+    Vsize = Vsize - 0x01;
+  }
+
   uint8_t reg = Wire.read();
   uint8_t val = Wire.read();
   switch(reg) {
-      case REG_UNICOLOR:
-        writeRegister(reg,val);
-        writeRegister(REG_RGB_CONTRAST,val);
-      break;
-      case REG_RGB_CONTRAST:
-        // Dont kill RGB contrast
-      break;
       case REG_MUTE_WIDE_VBLK:
-        // Never mute RGB
-        writeRegister(reg,val&0xBF);
+        // Write current Vsize value
+        writeRegister(reg,val&Vsize);
       break;
       default:
         writeRegister(reg,val);
